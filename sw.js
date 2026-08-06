@@ -8,7 +8,7 @@
    embebidos dentro del propio .html — deben ser archivos aparte.
    ========================================================= */
 
-const CACHE_NAME = "restauraciones-cache-v6-06082026";
+const CACHE_NAME = "restauraciones-cache-v7-06082026";
 const URLS_TO_CACHE = [
   "./",
   "./index.html",
