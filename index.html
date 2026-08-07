@@ -1697,6 +1697,19 @@ async function limpiarBackupsAntiguos(){
     sobrantes.forEach(r => tx.objectStore("backups").delete(r.id));
   }catch(e){ console.error(e); }
 }
+async function eliminarBackupInterno(id){
+  if(!confirm("¿Eliminar esta copia de seguridad? Esta acción no se puede deshacer.")) return;
+  try{
+    const db = await abrirDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("backups","readwrite");
+      tx.objectStore("backups").delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    await renderListaBackupsInternos();
+  }catch(e){ console.error(e); alert("No se ha podido eliminar la copia."); }
+}
 async function restaurarDesdeInterno(id){
   try{
     const db = await abrirDB();
@@ -1861,6 +1874,7 @@ async function renderListaArchivosCarpeta(handle){
     if(!archivos.length){ listaDiv.innerHTML = `<p class="vacio-tab">Aún no hay copias .json en esta carpeta.</p>`; return; }
     listaDiv.innerHTML = `<div class="campo"><label>Copias en la carpeta elegida</label></div>` + archivos.map(nombre => `
       <div class="item-lista">
+        <button class="btn-accion-mini borrar" onclick="eliminarArchivoCarpeta('${nombre.replace(/'/g,"\\'")}')">🗑</button>
         <div class="item-cuerpo"><div class="item-titulo">${escapeHTML(nombre)}</div></div>
         <div class="item-acciones">
           <button class="btn-accion-mini" onclick="restaurarDesdeArchivoCarpeta('${nombre.replace(/'/g,"\\'")}')">↺</button>
@@ -1881,6 +1895,7 @@ async function renderListaBackupsInternos(){
   }
   listaDiv.innerHTML = `<div class="campo"><label>Copias guardadas internamente</label></div>` + registros.map(r => `
     <div class="item-lista">
+      <button class="btn-accion-mini borrar" onclick="eliminarBackupInterno(${r.id})">🗑</button>
       <div class="item-cuerpo">
         <div class="item-titulo">${fechaBonitaConHora(r.fecha)}</div>
         <div class="item-sub">${escapeHTML(r.nombre)}</div>
@@ -1979,6 +1994,19 @@ async function restaurarDesdeArchivoCarpeta(nombre){
   }catch(e){
     console.error(e);
     alert("No se ha podido leer ese archivo.");
+  }
+}
+async function eliminarArchivoCarpeta(nombre){
+  if(!confirm(`¿Eliminar el archivo "${nombre}" de la carpeta? Esta acción no se puede deshacer.`)) return;
+  try{
+    const handle = await getCarpetaHandle();
+    const ok = await permisoCarpeta(handle, "readwrite");
+    if(!ok){ alert("No hay permiso de escritura sobre esa carpeta."); return; }
+    await handle.removeEntry(nombre);
+    await renderListaArchivosCarpeta(handle);
+  }catch(e){
+    console.error(e);
+    alert("No se ha podido eliminar ese archivo.");
   }
 }
 function importarBackupDesdeArchivo(ev){
