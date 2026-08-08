@@ -1669,8 +1669,8 @@ comprobarMostrarIntroCarpeta();
 prepararOcultarPantallaCarga();
 
 function prepararOcultarPantallaCarga(){
-  const TIEMPO_MIN = 400;   // que se vea un mínimo, aunque cargue rapidísimo
-  const TIEMPO_MAX = 4000;  // por si la imagen tarda o falla, no se queda colgada
+  const TIEMPO_MIN = 2000;  // que se vea un mínimo, aunque cargue rapidísimo
+  const TIEMPO_MAX = 4500;  // por si la imagen tarda o falla, no se queda colgada
   const inicio = Date.now();
   let hecho = false;
 
