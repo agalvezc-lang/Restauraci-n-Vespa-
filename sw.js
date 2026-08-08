@@ -8,11 +8,12 @@
    embebidos dentro del propio .html — deben ser archivos aparte.
    ========================================================= */
 
-const CACHE_NAME = "restauraciones-cache-v7-06082026";
+const CACHE_NAME = "restauraciones-cache-v8-08082026";
 const URLS_TO_CACHE = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./icons/splash-1284x2778.jpg"
 ];
 
 self.addEventListener("install", (event) => {

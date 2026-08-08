@@ -28,7 +28,7 @@
   media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)">
 <link rel="apple-touch-startup-image" href="./icons/splash-1242x2688.png"
   media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)">
-<link rel="apple-touch-startup-image" href="./icons/splash-1284x2778.png"
+<link rel="apple-touch-startup-image" href="./icons/splash-1284x2778.jpg"
   media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)">
 <link rel="apple-touch-startup-image" href="./icons/splash-1290x2796.png"
   media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)">
@@ -412,7 +412,7 @@ body{
 /* ---------- PANTALLA DE CARGA (splash) ---------- */
 .pantalla-carga{
   position:fixed;inset:0;z-index:999;
-  background-image:url('./icons/splash-1284x2778.png');
+  background-image:url('./icons/splash-1284x2778.jpg');
   background-size:cover;background-position:center;background-repeat:no-repeat;
   display:flex;align-items:flex-end;justify-content:center;
   padding-bottom:14vh;
@@ -1666,13 +1666,31 @@ document.getElementById("fondo-fijo").style.backgroundImage =
 cargarProyectos();
 renderListaProyectos();
 comprobarMostrarIntroCarpeta();
-setTimeout(ocultarPantallaCarga, 550);
+prepararOcultarPantallaCarga();
 
-function ocultarPantallaCarga(){
-  const el = document.getElementById("pantalla-carga");
-  if(!el) return;
-  el.classList.add("oculta");
-  setTimeout(() => el.remove(), 550);
+function prepararOcultarPantallaCarga(){
+  const TIEMPO_MIN = 400;   // que se vea un mínimo, aunque cargue rapidísimo
+  const TIEMPO_MAX = 4000;  // por si la imagen tarda o falla, no se queda colgada
+  const inicio = Date.now();
+  let hecho = false;
+
+  function ocultar(){
+    if(hecho) return;
+    hecho = true;
+    const el = document.getElementById("pantalla-carga");
+    if(!el) return;
+    const restante = Math.max(0, TIEMPO_MIN - (Date.now() - inicio));
+    setTimeout(() => {
+      el.classList.add("oculta");
+      setTimeout(() => el.remove(), 550);
+    }, restante);
+  }
+
+  const img = new Image();
+  img.onload = ocultar;
+  img.onerror = ocultar;
+  img.src = "./icons/splash-1284x2778.jpg";
+  setTimeout(ocultar, TIEMPO_MAX); // red de seguridad
 }
 
 /* ---------- PWA: registro del Service Worker ---------- */
