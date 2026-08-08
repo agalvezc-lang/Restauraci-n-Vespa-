@@ -408,9 +408,31 @@ body{
   pointer-events:none;
 }
 .toast-guardado.mostrar{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ---------- PANTALLA DE CARGA (splash) ---------- */
+.pantalla-carga{
+  position:fixed;inset:0;z-index:999;
+  background-image:url('./icons/splash-1284x2778.png');
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:14vh;
+  opacity:1;transition:opacity .5s ease;
+}
+.pantalla-carga.oculta{opacity:0;pointer-events:none;}
+.pantalla-carga .carga-punto{
+  width:38px;height:38px;border-radius:50%;
+  border:3px solid rgba(242,236,227,.25);
+  border-top-color:var(--texto);
+  animation:girar .8s linear infinite;
+}
+@keyframes girar{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
+
+<div class="pantalla-carga" id="pantalla-carga">
+  <div class="carga-punto"></div>
+</div>
 
 <div class="fondo-fijo" id="fondo-fijo"></div>
 <div class="toast-guardado" id="toast-guardado">✓ Guardado</div>
@@ -1644,6 +1666,14 @@ document.getElementById("fondo-fijo").style.backgroundImage =
 cargarProyectos();
 renderListaProyectos();
 comprobarMostrarIntroCarpeta();
+setTimeout(ocultarPantallaCarga, 550);
+
+function ocultarPantallaCarga(){
+  const el = document.getElementById("pantalla-carga");
+  if(!el) return;
+  el.classList.add("oculta");
+  setTimeout(() => el.remove(), 550);
+}
 
 /* ---------- PWA: registro del Service Worker ---------- */
 if("serviceWorker" in navigator){
