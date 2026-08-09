@@ -280,6 +280,13 @@ body{
   flex-shrink:0;border:1px solid var(--borde);position:relative;overflow:hidden;
 }
 .ficha-foto input[type=file]{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;}
+.ficha-foto-lupa{
+  position:absolute;bottom:3px;right:3px;z-index:2;
+  width:24px;height:24px;border-radius:50%;border:none;
+  background:rgba(0,0,0,.55);color:#fff;font-size:.75rem;
+  display:none;align-items:center;justify-content:center;padding:0;
+}
+.ficha-foto-lupa.visible{display:flex;}
 .ficha-datos{flex:1;min-width:0;}
 .ficha-nombre-edit{
   background:none;border:none;color:var(--texto);font-size:1.15rem;font-weight:700;width:100%;
@@ -538,6 +545,7 @@ body{
     <div class="ficha-foto-row" style="padding-top:14px;">
       <div class="ficha-foto" id="ficha-foto">
         <input type="file" accept="image/*" onchange="cambiarFotoProyecto(event)">
+        <button type="button" class="ficha-foto-lupa" id="ficha-foto-lupa" onclick="ampliarFotoPortada(event)" title="Ver foto en grande">🔍</button>
       </div>
       <div class="ficha-datos">
         <input type="text" id="ficha-nombre" class="ficha-nombre-edit" placeholder="Nombre del proyecto">
@@ -1174,6 +1182,7 @@ function abrirFicha(id){
 
   const foto = document.getElementById("ficha-foto");
   foto.style.backgroundImage = p.foto ? `url('${p.foto}')` : "";
+  document.getElementById("ficha-foto-lupa").classList.toggle("visible", !!p.foto);
 
   document.getElementById("filtro-categoria-gasto").value = "";
 
@@ -1198,7 +1207,14 @@ function cambiarFotoProyecto(ev){
     tocarActualizado(p);
     guardarProyectos();
     document.getElementById("ficha-foto").style.backgroundImage = `url('${b64}')`;
+    document.getElementById("ficha-foto-lupa").classList.add("visible");
   });
+}
+function ampliarFotoPortada(ev){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  const p = getProyectoActual();
+  if(!p || !p.foto) return;
+  abrirFotoAmpliada(p.foto);
 }
 function borrarProyectoActual(){
   const p = getProyectoActual();
@@ -1956,56 +1972,160 @@ async function copiarManualACarpeta(handle){
     console.error("No se ha podido copiar el manual a la carpeta", e);
   }
 }
+/* Recorre todos los proyectos y devuelve la lista de fotos como
+   { ruta: "fotos/carpeta_proyecto/nombre.ext", dataUrl } lista para
+   escribir en una carpeta real o meter en un .zip. */
+function recopilarFotosProyectos(){
+  const limpiarNombre = s => (s || "sin_nombre").replace(/[^a-z0-9]+/gi,"_").toLowerCase().slice(0,40);
+  const lista = [];
+  function agregar(carpetaProyecto, nombreArchivo, dataUrl){
+    if(!dataUrl || !dataUrl.startsWith("data:")) return;
+    const ext = dataUrl.startsWith("data:image/png") ? "png" : "jpg";
+    lista.push({ ruta: `fotos/${carpetaProyecto}/${nombreArchivo}.${ext}`, dataUrl });
+  }
+  for(const p of proyectos){
+    const carpetaProyecto = limpiarNombre(p.nombre) + "_" + p.id;
+    agregar(carpetaProyecto, "portada", p.foto);
+    if(Array.isArray(p.despiece)){
+      for(const pieza of p.despiece){
+        const base = limpiarNombre(pieza.nombre);
+        agregar(carpetaProyecto, `pieza_${base}_antes`, pieza.fotoAntes);
+        agregar(carpetaProyecto, `pieza_${base}_despues`, pieza.fotoDespues);
+        if(Array.isArray(pieza.fotosIntermedias)){
+          pieza.fotosIntermedias.forEach((b64,i) => agregar(carpetaProyecto, `pieza_${base}_intermedia_${i+1}`, b64));
+        }
+      }
+    }
+    if(Array.isArray(p.fases)){
+      for(const fase of p.fases){
+        const base = limpiarNombre(fase.nombre);
+        agregar(carpetaProyecto, `fase_${base}_antes`, fase.fotoAntes);
+        agregar(carpetaProyecto, `fase_${base}_despues`, fase.fotoDespues);
+        if(Array.isArray(fase.fotosIntermedias)){
+          fase.fotosIntermedias.forEach((b64,i) => agregar(carpetaProyecto, `fase_${base}_intermedia_${i+1}`, b64));
+        }
+      }
+    }
+  }
+  return lista;
+}
 async function guardarFotosEnCarpeta(handle){
   try{
     const carpetaFotos = await handle.getDirectoryHandle("fotos", {create:true});
-    const limpiarNombre = s => (s || "sin_nombre").replace(/[^a-z0-9]+/gi,"_").toLowerCase().slice(0,40);
-
-    async function escribirFoto(carpeta, nombreArchivo, dataUrl){
-      if(!dataUrl || !dataUrl.startsWith("data:")) return;
+    const fotos = recopilarFotosProyectos();
+    for(const foto of fotos){
       try{
-        const resp = await fetch(dataUrl);
+        // ruta = "fotos/carpeta_proyecto/archivo.ext" -> ya estamos dentro de "fotos"
+        const partes = foto.ruta.split("/").slice(1);
+        const nombreArchivo = partes.pop();
+        let carpeta = carpetaFotos;
+        for(const parte of partes){
+          carpeta = await carpeta.getDirectoryHandle(parte, {create:true});
+        }
+        const resp = await fetch(foto.dataUrl);
         const blob = await resp.blob();
-        const ext = blob.type.includes("png") ? "png" : "jpg";
-        const fileHandle = await carpeta.getFileHandle(`${nombreArchivo}.${ext}`, {create:true});
+        const fileHandle = await carpeta.getFileHandle(nombreArchivo, {create:true});
         const writable = await fileHandle.createWritable();
         await writable.write(blob);
         await writable.close();
-      }catch(e){ console.error("No se ha podido escribir la foto", nombreArchivo, e); }
-    }
-
-    for(const p of proyectos){
-      const carpetaProyecto = await carpetaFotos.getDirectoryHandle(limpiarNombre(p.nombre) + "_" + p.id, {create:true});
-      await escribirFoto(carpetaProyecto, "portada", p.foto);
-
-      if(Array.isArray(p.despiece)){
-        for(const pieza of p.despiece){
-          const base = limpiarNombre(pieza.nombre);
-          await escribirFoto(carpetaProyecto, `pieza_${base}_antes`, pieza.fotoAntes);
-          await escribirFoto(carpetaProyecto, `pieza_${base}_despues`, pieza.fotoDespues);
-          if(Array.isArray(pieza.fotosIntermedias)){
-            for(let i=0;i<pieza.fotosIntermedias.length;i++){
-              await escribirFoto(carpetaProyecto, `pieza_${base}_intermedia_${i+1}`, pieza.fotosIntermedias[i]);
-            }
-          }
-        }
-      }
-      if(Array.isArray(p.fases)){
-        for(const fase of p.fases){
-          const base = limpiarNombre(fase.nombre);
-          await escribirFoto(carpetaProyecto, `fase_${base}_antes`, fase.fotoAntes);
-          await escribirFoto(carpetaProyecto, `fase_${base}_despues`, fase.fotoDespues);
-          if(Array.isArray(fase.fotosIntermedias)){
-            for(let i=0;i<fase.fotosIntermedias.length;i++){
-              await escribirFoto(carpetaProyecto, `fase_${base}_intermedia_${i+1}`, fase.fotosIntermedias[i]);
-            }
-          }
-        }
-      }
+      }catch(e){ console.error("No se ha podido escribir la foto", foto.ruta, e); }
     }
   }catch(e){
     console.error("No se han podido guardar las fotos como archivos", e);
   }
+}
+
+/* ---------- generador de .zip sin dependencias (método "store", sin comprimir) ---------- */
+function _crc32Tabla(){
+  const tabla = new Uint32Array(256);
+  for(let n=0;n<256;n++){
+    let c = n;
+    for(let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    tabla[n] = c >>> 0;
+  }
+  return tabla;
+}
+const _TABLA_CRC32 = _crc32Tabla();
+function crc32(bytes){
+  let crc = 0xFFFFFFFF;
+  for(let i=0;i<bytes.length;i++) crc = _TABLA_CRC32[(crc ^ bytes[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function dataURLaBytes(dataUrl){
+  const base64 = (dataUrl.split(",")[1] || "");
+  const binario = atob(base64);
+  const bytes = new Uint8Array(binario.length);
+  for(let i=0;i<binario.length;i++) bytes[i] = binario.charCodeAt(i);
+  return bytes;
+}
+function _u16(n){ return new Uint8Array([n & 0xFF, (n >>> 8) & 0xFF]); }
+function _u32(n){ return new Uint8Array([n & 0xFF, (n >>> 8) & 0xFF, (n >>> 16) & 0xFF, (n >>> 24) & 0xFF]); }
+function _concatBytes(arrays){
+  let len = 0;
+  for(const a of arrays) len += a.length;
+  const out = new Uint8Array(len);
+  let pos = 0;
+  for(const a of arrays){ out.set(a, pos); pos += a.length; }
+  return out;
+}
+function crearZip(archivos){
+  // archivos: [{ nombre:"ruta/dentro/del/zip.ext", bytes:Uint8Array }]
+  const codificador = new TextEncoder();
+  const localesConcat = [];
+  const centralConcat = [];
+  let offset = 0;
+  const hora = _u16(0), fecha = _u16(0x21); // fecha/hora simbólicas, no relevante para el uso de la app
+
+  for(const archivo of archivos){
+    const nombreBytes = codificador.encode(archivo.nombre);
+    const crc = crc32(archivo.bytes);
+    const tam = archivo.bytes.length;
+
+    const local = _concatBytes([
+      _u32(0x04034b50), _u16(20), _u16(0), _u16(0), hora, fecha,
+      _u32(crc), _u32(tam), _u32(tam),
+      _u16(nombreBytes.length), _u16(0),
+      nombreBytes, archivo.bytes
+    ]);
+    localesConcat.push(local);
+
+    const central = _concatBytes([
+      _u32(0x02014b50), _u16(20), _u16(20), _u16(0), _u16(0), hora, fecha,
+      _u32(crc), _u32(tam), _u32(tam),
+      _u16(nombreBytes.length), _u16(0), _u16(0), _u16(0), _u16(0), _u32(0),
+      _u32(offset), nombreBytes
+    ]);
+    centralConcat.push(central);
+
+    offset += local.length;
+  }
+
+  const centralDir = _concatBytes(centralConcat);
+  const finCentral = _concatBytes([
+    _u32(0x06054b50), _u16(0), _u16(0),
+    _u16(archivos.length), _u16(archivos.length),
+    _u32(centralDir.length), _u32(offset), _u16(0)
+  ]);
+
+  const total = _concatBytes([..._localesComoArray(localesConcat), centralDir, finCentral]);
+  return new Blob([total], {type:"application/zip"});
+}
+function _localesComoArray(arr){ return arr; }
+async function generarZipFotos(){
+  const fotos = recopilarFotosProyectos();
+  if(!fotos.length) return null;
+  const archivos = fotos.map(f => ({ nombre: f.ruta, bytes: dataURLaBytes(f.dataUrl) }));
+  return crearZip(archivos);
+}
+function descargarBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 async function elegirCarpeta(){
   try{
@@ -2147,18 +2267,23 @@ async function exportarBackup(){
   // Descarga normal + respaldo interno (Android / navegadores sin selector de carpeta)
   try{
     const blob = new Blob([datos], {type:"application/json"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    descargarBlob(blob, filename);
   }catch(e){
     console.error("Error exportando backup", e);
     alert("No se ha podido exportar la copia (" + e.name + ").");
     return;
+  }
+  // Además del .json, descargamos las fotos como imágenes reales dentro de un
+  // .zip, ya que en Android no existe forma de elegir una carpeta y guardar
+  // ahí archivos sueltos (el navegador no lo permite).
+  try{
+    const zipFotos = await generarZipFotos();
+    if(zipFotos){
+      const filenameZip = `restauraciones-fotos-${fechaArchivo}.zip`;
+      setTimeout(() => descargarBlob(zipFotos, filenameZip), 400);
+    }
+  }catch(e){
+    console.error("Error generando el zip de fotos", e);
   }
   await guardarBackupInterno(datos, filename);
   if(!soportaFS){
