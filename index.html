@@ -426,12 +426,33 @@ body{
   animation:girar .8s linear infinite;
 }
 @keyframes girar{to{transform:rotate(360deg);}}
+
+/* ---------- VISOR DE FOTO (doble toque) ---------- */
+.lightbox-foto{
+  position:fixed;top:0;right:0;bottom:0;left:0;z-index:1000;
+  background:rgba(0,0,0,.9);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+  padding:20px;
+}
+.lightbox-foto.activo{opacity:1;pointer-events:auto;}
+.lightbox-foto img{max-width:100%;max-height:100%;border-radius:10px;object-fit:contain;}
+.lightbox-foto .lightbox-cerrar{
+  position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,.12);color:#fff;border:none;font-size:1.2rem;
+  display:flex;align-items:center;justify-content:center;
+}
 </style>
 </head>
 <body>
 
 <div class="pantalla-carga" id="pantalla-carga">
   <div class="carga-punto"></div>
+</div>
+
+<div class="lightbox-foto" id="lightbox-foto" onclick="cerrarFotoAmpliada()">
+  <button class="lightbox-cerrar" onclick="cerrarFotoAmpliada()">✕</button>
+  <img id="lightbox-foto-img" src="" alt="">
 </div>
 
 <div class="fondo-fijo" id="fondo-fijo"></div>
@@ -871,6 +892,28 @@ let faseIntermediasB64 = [];
 
 /* ---------- utilidades ---------- */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+/* ---------- visor de foto a pantalla completa (doble toque) ---------- */
+function dobleToqueFoto(ev, url){
+  if(!url) return;
+  const el = ev.currentTarget;
+  const ahora = Date.now();
+  const ultimo = parseInt(el.dataset.ultimoToque || "0", 10);
+  el.dataset.ultimoToque = ahora;
+  if(ahora - ultimo < 350){
+    ev.preventDefault();
+    abrirFotoAmpliada(url);
+  }
+}
+function abrirFotoAmpliada(url){
+  if(!url) return;
+  document.getElementById("lightbox-foto-img").src = url;
+  document.getElementById("lightbox-foto").classList.add("activo");
+}
+function cerrarFotoAmpliada(){
+  document.getElementById("lightbox-foto").classList.remove("activo");
+  document.getElementById("lightbox-foto-img").src = "";
+}
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
 function fechaParaNombreArchivo(fecha){
   const d = fecha || new Date();
@@ -1270,7 +1313,7 @@ function renderDespiece(){
   vacio.style.display = "none";
   cont.innerHTML = p.despiece.map(item => `
     <div class="item-lista">
-      ${(item.fotoAntes || item.fotoDespues) ? `<div class="item-thumb" style="background-image:url('${item.fotoDespues || item.fotoAntes}')">${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<span class="item-thumb-badge">+${item.fotosIntermedias.length}</span>` : ""}</div>` : ""}
+      ${(item.fotoAntes || item.fotoDespues) ? `<div class="item-thumb" style="background-image:url('${item.fotoDespues || item.fotoAntes}')" onclick="dobleToqueFoto(event, '${item.fotoDespues || item.fotoAntes}')">${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<span class="item-thumb-badge">+${item.fotosIntermedias.length}</span>` : ""}</div>` : ""}
       <div class="item-cuerpo">
         <div class="item-titulo">${escapeHTML(item.nombre)}</div>
         ${item.notas ? `<div class="item-sub">${escapeHTML(item.notas)}</div>` : ""}
@@ -1401,9 +1444,9 @@ function renderFases(){
     <div class="item-lista">
       ${(item.fotoAntes || item.fotoDespues || (item.fotosIntermedias && item.fotosIntermedias.length)) ? `
       <div class="item-thumb-par">
-        ${item.fotoAntes ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoAntes}')" title="Antes"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Antes</div>`}
-        ${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotosIntermedias[0]}')" title="${item.fotosIntermedias.length} foto(s) intermedia(s)"><span class="item-thumb-badge">+${item.fotosIntermedias.length}</span></div>` : ""}
-        ${item.fotoDespues ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoDespues}')" title="Después"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Después</div>`}
+        ${item.fotoAntes ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoAntes}')" title="Antes" onclick="dobleToqueFoto(event, '${item.fotoAntes}')"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Antes</div>`}
+        ${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotosIntermedias[0]}')" title="${item.fotosIntermedias.length} foto(s) intermedia(s)" onclick="dobleToqueFoto(event, '${item.fotosIntermedias[0]}')"><span class="item-thumb-badge">+${item.fotosIntermedias.length}</span></div>` : ""}
+        ${item.fotoDespues ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoDespues}')" title="Después" onclick="dobleToqueFoto(event, '${item.fotoDespues}')"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Después</div>`}
       </div>` : ""}
       <div class="item-cuerpo">
         <div class="item-titulo">${escapeHTML(item.nombre)}</div>
@@ -1863,6 +1906,57 @@ async function copiarManualACarpeta(handle){
     console.error("No se ha podido copiar el manual a la carpeta", e);
   }
 }
+async function guardarFotosEnCarpeta(handle){
+  try{
+    const carpetaFotos = await handle.getDirectoryHandle("fotos", {create:true});
+    const limpiarNombre = s => (s || "sin_nombre").replace(/[^a-z0-9]+/gi,"_").toLowerCase().slice(0,40);
+
+    async function escribirFoto(carpeta, nombreArchivo, dataUrl){
+      if(!dataUrl || !dataUrl.startsWith("data:")) return;
+      try{
+        const resp = await fetch(dataUrl);
+        const blob = await resp.blob();
+        const ext = blob.type.includes("png") ? "png" : "jpg";
+        const fileHandle = await carpeta.getFileHandle(`${nombreArchivo}.${ext}`, {create:true});
+        const writable = await fileHandle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+      }catch(e){ console.error("No se ha podido escribir la foto", nombreArchivo, e); }
+    }
+
+    for(const p of proyectos){
+      const carpetaProyecto = await carpetaFotos.getDirectoryHandle(limpiarNombre(p.nombre) + "_" + p.id, {create:true});
+      await escribirFoto(carpetaProyecto, "portada", p.foto);
+
+      if(Array.isArray(p.despiece)){
+        for(const pieza of p.despiece){
+          const base = limpiarNombre(pieza.nombre);
+          await escribirFoto(carpetaProyecto, `pieza_${base}_antes`, pieza.fotoAntes);
+          await escribirFoto(carpetaProyecto, `pieza_${base}_despues`, pieza.fotoDespues);
+          if(Array.isArray(pieza.fotosIntermedias)){
+            for(let i=0;i<pieza.fotosIntermedias.length;i++){
+              await escribirFoto(carpetaProyecto, `pieza_${base}_intermedia_${i+1}`, pieza.fotosIntermedias[i]);
+            }
+          }
+        }
+      }
+      if(Array.isArray(p.fases)){
+        for(const fase of p.fases){
+          const base = limpiarNombre(fase.nombre);
+          await escribirFoto(carpetaProyecto, `fase_${base}_antes`, fase.fotoAntes);
+          await escribirFoto(carpetaProyecto, `fase_${base}_despues`, fase.fotoDespues);
+          if(Array.isArray(fase.fotosIntermedias)){
+            for(let i=0;i<fase.fotosIntermedias.length;i++){
+              await escribirFoto(carpetaProyecto, `fase_${base}_intermedia_${i+1}`, fase.fotosIntermedias[i]);
+            }
+          }
+        }
+      }
+    }
+  }catch(e){
+    console.error("No se han podido guardar las fotos como archivos", e);
+  }
+}
 async function elegirCarpeta(){
   try{
     const handleElegido = await window.showDirectoryPicker({mode:"readwrite"});
@@ -1990,6 +2084,7 @@ async function exportarBackup(){
       const writable = await fileHandle.createWritable();
       await writable.write(datos);
       await writable.close();
+      await guardarFotosEnCarpeta(handle);
       mostrarToastGuardado();
       await abrirBackupPanel();
       return;
