@@ -872,6 +872,11 @@ let faseIntermediasB64 = [];
 /* ---------- utilidades ---------- */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function fechaParaNombreArchivo(fecha){
+  const d = fecha || new Date();
+  const pad2 = n => String(n).padStart(2,"0");
+  return `${pad2(d.getDate())}-${pad2(d.getMonth()+1)}-${d.getFullYear()}`;
+}
 function fechaBonita(iso){
   if(!iso) return "";
   const [y,m,d] = iso.split("-");
@@ -1514,7 +1519,7 @@ function exportarGastosCSV(){
   const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
   const nombreProyecto = (p.nombre || "proyecto").replace(/[^a-z0-9]+/gi,"_").toLowerCase();
-  const fechaArchivo = hoyISO();
+  const fechaArchivo = fechaParaNombreArchivo();
   const a = document.createElement("a");
   a.href = url;
   a.download = `gastos-${nombreProyecto}-${fechaArchivo}.csv`;
@@ -1958,7 +1963,9 @@ async function renderListaBackupsInternos(){
 /* ---------- backup: exportar / restaurar ---------- */
 async function exportarBackup(){
   const datos = JSON.stringify(proyectos, null, 2);
-  const fechaArchivo = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+  const ahora = new Date();
+  const pad2 = n => String(n).padStart(2,"0");
+  const fechaArchivo = `${fechaParaNombreArchivo(ahora)}_${pad2(ahora.getHours())}-${pad2(ahora.getMinutes())}`;
   const filename = `restauraciones-backup-${fechaArchivo}.json`;
   const soportaFS = "showDirectoryPicker" in window;
 
