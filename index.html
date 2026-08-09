@@ -233,6 +233,13 @@ body{
   color:var(--texto-tenue);font-size:.85rem;margin-bottom:14px;overflow:hidden;position:relative;
 }
 .foto-picker input[type=file]{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;}
+.foto-picker-lupa{
+  position:absolute;bottom:5px;right:5px;z-index:2;
+  width:26px;height:26px;border-radius:50%;border:none;
+  background:rgba(0,0,0,.55);color:#fff;font-size:.8rem;
+  display:none;align-items:center;justify-content:center;padding:0;
+}
+.foto-picker-lupa.visible{display:flex;}
 .foto-picker-mini{height:96px;font-size:.7rem;margin-bottom:0;}
 .fila-fotos-pieza{display:flex;gap:10px;margin-bottom:14px;}
 .fila-fotos-pieza .foto-picker-mini{flex:1;}
@@ -449,6 +456,19 @@ body{
   background:rgba(255,255,255,.12);color:#fff;border:none;font-size:1.2rem;
   display:flex;align-items:center;justify-content:center;
 }
+.lightbox-foto .lightbox-nav{
+  position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;
+  background:rgba(255,255,255,.12);color:#fff;border:none;font-size:1.3rem;
+  display:none;align-items:center;justify-content:center;
+}
+.lightbox-foto.con-galeria .lightbox-nav{display:flex;}
+.lightbox-nav-prev{left:10px;}
+.lightbox-nav-next{right:10px;}
+.lightbox-foto-contador{
+  position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#fff;
+  font-size:.85rem;opacity:.8;display:none;
+}
+.lightbox-foto.con-galeria .lightbox-foto-contador{display:block;}
 </style>
 </head>
 <body>
@@ -459,7 +479,10 @@ body{
 
 <div class="lightbox-foto" id="lightbox-foto" onclick="cerrarFotoAmpliada()">
   <button class="lightbox-cerrar" onclick="cerrarFotoAmpliada()">✕</button>
+  <button class="lightbox-nav lightbox-nav-prev" onclick="navegarFotoAmpliada(event,-1)">‹</button>
   <img id="lightbox-foto-img" src="" alt="">
+  <button class="lightbox-nav lightbox-nav-next" onclick="navegarFotoAmpliada(event,1)">›</button>
+  <div class="lightbox-foto-contador" id="lightbox-foto-contador"></div>
 </div>
 
 <div class="fondo-fijo" id="fondo-fijo"></div>
@@ -693,6 +716,7 @@ body{
     <label class="foto-picker foto-picker-mini foto-picker-cuadrada" id="np-pieza-foto-antes-picker">
       <span class="foto-picker-txt">📷 Antes</span>
       <input type="file" accept="image/*" onchange="previsualizarFotoPieza(event,'antes')">
+      <button type="button" class="foto-picker-lupa" id="np-pieza-foto-antes-lupa" onclick="ampliarFotoPicker(event,'np-pieza-foto-antes-picker')" title="Ver foto en grande">🔍</button>
     </label>
     <div class="bloque-intermedias">
       <label>Fotos intermedias</label>
@@ -701,6 +725,7 @@ body{
     <label class="foto-picker foto-picker-mini foto-picker-cuadrada" id="np-pieza-foto-despues-picker">
       <span class="foto-picker-txt">📷 Después</span>
       <input type="file" accept="image/*" onchange="previsualizarFotoPieza(event,'despues')">
+      <button type="button" class="foto-picker-lupa" id="np-pieza-foto-despues-lupa" onclick="ampliarFotoPicker(event,'np-pieza-foto-despues-picker')" title="Ver foto en grande">🔍</button>
     </label>
     <div class="campo">
       <label>Nombre de la pieza *</label>
@@ -750,6 +775,7 @@ body{
     <label class="foto-picker foto-picker-mini foto-picker-cuadrada" id="np-fase-foto-antes-picker">
       <span class="foto-picker-txt">📷 Antes</span>
       <input type="file" accept="image/*" onchange="previsualizarFotoFase(event,'antes')">
+      <button type="button" class="foto-picker-lupa" id="np-fase-foto-antes-lupa" onclick="ampliarFotoPicker(event,'np-fase-foto-antes-picker')" title="Ver foto en grande">🔍</button>
     </label>
     <div class="bloque-intermedias">
       <label>Fotos intermedias</label>
@@ -758,6 +784,7 @@ body{
     <label class="foto-picker foto-picker-mini foto-picker-cuadrada" id="np-fase-foto-despues-picker">
       <span class="foto-picker-txt">📷 Después</span>
       <input type="file" accept="image/*" onchange="previsualizarFotoFase(event,'despues')">
+      <button type="button" class="foto-picker-lupa" id="np-fase-foto-despues-lupa" onclick="ampliarFotoPicker(event,'np-fase-foto-despues-picker')" title="Ver foto en grande">🔍</button>
     </label>
     <button class="btn-primario" onclick="guardarNuevaFase()">Guardar fase</button>
   </div>
@@ -908,28 +935,56 @@ function extraerUrlDeFondo(el){
   const m = bg.match(/^url\((["']?)(.*)\1\)$/);
   return m ? m[2] : null;
 }
+let _galeriaActual = null;
+let _galeriaIndice = 0;
 function dobleToqueFoto(ev){
   const el = ev.currentTarget;
-  const url = extraerUrlDeFondo(el);
-  if(!url) return;
   const ahora = Date.now();
   const ultimo = parseInt(el.dataset.ultimoToque || "0", 10);
   el.dataset.ultimoToque = ahora;
   if(ahora - ultimo < 350){
     ev.preventDefault();
-    abrirFotoAmpliada(url);
+    const fotosData = el.dataset.fotos;
+    if(fotosData){
+      try{
+        const urls = JSON.parse(fotosData);
+        abrirFotoAmpliada(urls, 0);
+        return;
+      }catch(e){}
+    }
+    const url = extraerUrlDeFondo(el);
+    if(url) abrirFotoAmpliada([url], 0);
   }
 }
-function abrirFotoAmpliada(url){
-  if(!url) return;
-  document.getElementById("lightbox-foto-img").src = url;
+function abrirFotoAmpliada(urls, indice){
+  if(typeof urls === "string") urls = [urls];
+  if(!urls || !urls.length) return;
+  _galeriaActual = urls;
+  _galeriaIndice = indice || 0;
+  mostrarFotoGaleriaActual();
   document.getElementById("lightbox-foto").classList.add("activo");
   history.pushState({lightbox:true}, "");
+}
+function mostrarFotoGaleriaActual(){
+  if(!_galeriaActual) return;
+  document.getElementById("lightbox-foto-img").src = _galeriaActual[_galeriaIndice];
+  const lightbox = document.getElementById("lightbox-foto");
+  const varias = _galeriaActual.length > 1;
+  lightbox.classList.toggle("con-galeria", varias);
+  document.getElementById("lightbox-foto-contador").textContent = varias ? `${_galeriaIndice+1} / ${_galeriaActual.length}` : "";
+}
+function navegarFotoAmpliada(ev, delta){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  if(!_galeriaActual || _galeriaActual.length < 2) return;
+  _galeriaIndice = (_galeriaIndice + delta + _galeriaActual.length) % _galeriaActual.length;
+  mostrarFotoGaleriaActual();
 }
 function cerrarFotoAmpliada(volverAtras){
   const estabaAbierto = document.getElementById("lightbox-foto").classList.contains("activo");
   document.getElementById("lightbox-foto").classList.remove("activo");
+  document.getElementById("lightbox-foto").classList.remove("con-galeria");
   document.getElementById("lightbox-foto-img").src = "";
+  _galeriaActual = null;
   if(estabaAbierto && volverAtras !== false && history.state && history.state.lightbox){
     history.back();
   }
@@ -1214,7 +1269,13 @@ function ampliarFotoPortada(ev){
   if(ev){ ev.preventDefault(); ev.stopPropagation(); }
   const p = getProyectoActual();
   if(!p || !p.foto) return;
-  abrirFotoAmpliada(p.foto);
+  abrirFotoAmpliada(p.foto, 0);
+}
+function ampliarFotoPicker(ev, pickerId){
+  if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+  const picker = document.getElementById(pickerId);
+  const url = extraerUrlDeFondo(picker);
+  if(url) abrirFotoAmpliada(url, 0);
 }
 function borrarProyectoActual(){
   const p = getProyectoActual();
@@ -1274,12 +1335,15 @@ function cambiarTab(nombre){
 function resetPickerFotoPieza(tipo, valorB64){
   const picker = document.getElementById(`np-pieza-foto-${tipo}-picker`);
   const txt = picker.querySelector(".foto-picker-txt");
+  const lupa = document.getElementById(`np-pieza-foto-${tipo}-lupa`);
   if(valorB64){
     picker.style.backgroundImage = `url('${valorB64}')`;
     txt.style.display = "none";
+    lupa.classList.add("visible");
   }else{
     picker.style.backgroundImage = "";
     txt.style.display = "block";
+    lupa.classList.remove("visible");
   }
 }
 function previsualizarFotoPieza(ev, tipo){
@@ -1293,8 +1357,8 @@ function previsualizarFotoPieza(ev, tipo){
 function renderTiraIntermediasPieza(){
   const cont = document.getElementById("np-pieza-intermedias-tira");
   cont.innerHTML = piezaIntermediasB64.map((b64, i) => `
-    <div class="mini-intermedia" style="background-image:url('${b64}')">
-      <button type="button" class="btn-quitar-intermedia" onclick="quitarFotoIntermediaPieza(${i})">✕</button>
+    <div class="mini-intermedia" style="background-image:url('${b64}')" onclick="dobleToqueFoto(event)">
+      <button type="button" class="btn-quitar-intermedia" onclick="event.stopPropagation(); quitarFotoIntermediaPieza(${i})">✕</button>
     </div>
   `).join("") + `
     <label class="btn-add-intermedia">
@@ -1405,12 +1469,15 @@ function cambiarEstadoPieza(id, valor){
 function resetPickerFotoFase(tipo, valorB64){
   const picker = document.getElementById(`np-fase-foto-${tipo}-picker`);
   const txt = picker.querySelector(".foto-picker-txt");
+  const lupa = document.getElementById(`np-fase-foto-${tipo}-lupa`);
   if(valorB64){
     picker.style.backgroundImage = `url('${valorB64}')`;
     txt.style.display = "none";
+    lupa.classList.add("visible");
   }else{
     picker.style.backgroundImage = "";
     txt.style.display = "block";
+    lupa.classList.remove("visible");
   }
 }
 function previsualizarFotoFase(ev, tipo){
@@ -1424,8 +1491,8 @@ function previsualizarFotoFase(ev, tipo){
 function renderTiraIntermediasFase(){
   const cont = document.getElementById("np-fase-intermedias-tira");
   cont.innerHTML = faseIntermediasB64.map((b64, i) => `
-    <div class="mini-intermedia" style="background-image:url('${b64}')">
-      <button type="button" class="btn-quitar-intermedia" onclick="quitarFotoIntermediaFase(${i})">✕</button>
+    <div class="mini-intermedia" style="background-image:url('${b64}')" onclick="dobleToqueFoto(event)">
+      <button type="button" class="btn-quitar-intermedia" onclick="event.stopPropagation(); quitarFotoIntermediaFase(${i})">✕</button>
     </div>
   `).join("") + `
     <label class="btn-add-intermedia">
