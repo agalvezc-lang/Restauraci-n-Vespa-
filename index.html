@@ -935,12 +935,28 @@ function leerArchivoComoB64(file, callback){
 }
 
 /* ---------- persistencia ---------- */
-function cargarProyectos(){
+async function cargarProyectos(){
   try{
+    const db = await abrirDB();
+    const enDB = await new Promise((resolve, reject) => {
+      const tx = db.transaction("proyectos","readonly");
+      const req = tx.objectStore("proyectos").get("data");
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    if(enDB){
+      proyectos = enDB;
+      return;
+    }
+    // Migración: si había datos antiguos en localStorage (versión anterior de la app), los traemos una vez.
     const raw = localStorage.getItem(STORAGE_KEY);
     proyectos = raw ? JSON.parse(raw) : [];
+    if(raw){
+      await guardarProyectos();
+      try{ localStorage.removeItem(STORAGE_KEY); }catch(e){ /* no pasa nada si no se puede limpiar */ }
+    }
   }catch(e){
-    console.error("Error leyendo localStorage", e);
+    console.error("Error leyendo IndexedDB", e);
     proyectos = [];
     alert("No se ha podido acceder al almacenamiento del navegador (" + e.name + "). Si abres el archivo desde Descargas, prueba a alojarlo en una URL propia (GitHub Pages) para que funcione con normalidad.");
   }
@@ -956,13 +972,19 @@ function mostrarToast(texto, duracionMs){
 function mostrarToastGuardado(){
   mostrarToast("✓ Guardado", 1100);
 }
-function guardarProyectos(){
+async function guardarProyectos(){
   try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(proyectos));
+    const db = await abrirDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("proyectos","readwrite");
+      tx.objectStore("proyectos").put(proyectos, "data");
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
     mostrarToastGuardado();
   }catch(e){
-    console.error("Error guardando en localStorage", e);
-    alert("No se ha podido guardar (" + e.name + "). Es probable que el navegador esté bloqueando el almacenamiento en esta ubicación del archivo. Prueba a abrir la app desde una URL propia (por ejemplo GitHub Pages) en vez de desde Descargas.");
+    console.error("Error guardando en IndexedDB", e);
+    alert("No se ha podido guardar (" + e.name + "). Prueba a liberar espacio en el teléfono o a hacer una copia de seguridad y borrar fotos antiguas.");
   }
 }
 function nuevoProyectoBase(){
@@ -1669,7 +1691,7 @@ function seleccionarPaleta(key){
 /* Este bloque debe declararse ANTES de "init", porque comprobarMostrarIntroCarpeta()
    necesita DB_NAME/getCarpetaHandle() ya definidos en cuanto arranca la app. */
 const DB_NAME = "restaura_backup_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 function abrirDB(){
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -1677,6 +1699,7 @@ function abrirDB(){
       const db = e.target.result;
       if(!db.objectStoreNames.contains("handles")) db.createObjectStore("handles");
       if(!db.objectStoreNames.contains("backups")) db.createObjectStore("backups", {keyPath:"id"});
+      if(!db.objectStoreNames.contains("proyectos")) db.createObjectStore("proyectos");
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -1711,9 +1734,10 @@ document.getElementById("buscador").addEventListener("input", renderListaProyect
 document.getElementById("version-tag").textContent = "v" + APP_VERSION;
 document.getElementById("fondo-fijo").style.backgroundImage =
   "linear-gradient(180deg, rgba(35,35,35,.45), rgba(35,35,35,.55)), url('" + SPLASH_IMG_B64 + "')";
-cargarProyectos();
-renderListaProyectos();
-comprobarMostrarIntroCarpeta();
+cargarProyectos().then(() => {
+  renderListaProyectos();
+  comprobarMostrarIntroCarpeta();
+});
 prepararOcultarPantallaCarga();
 
 function prepararOcultarPantallaCarga(){
