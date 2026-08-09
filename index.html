@@ -138,7 +138,7 @@ body{
 
 /* ---------- FONDO FIJO GLASS (toda la app) ---------- */
 .fondo-fijo{
-  position:fixed;inset:0;z-index:-1;
+  position:fixed;top:0;right:0;bottom:0;left:0;z-index:-1;
   background-size:cover;background-position:center;background-repeat:no-repeat;
   filter:blur(1.5px) saturate(1.05);
   transform:scale(1.03); /* evita bordes por el blur */
@@ -163,7 +163,7 @@ body{
 
 /* ---------- MODALES / FORM ---------- */
 .overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;
+  position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.55);z-index:50;
   display:none;align-items:flex-end;justify-content:center;
 }
 .overlay.activo{display:flex;}
@@ -180,7 +180,7 @@ body{
 
 /* ---------- PANTALLA COMPLETA: EXPLICACIÓN CARPETA ---------- */
 .overlay-intro{
-  position:fixed;inset:0;z-index:200;
+  position:fixed;top:0;right:0;bottom:0;left:0;z-index:200;
   background:linear-gradient(160deg,var(--azul-noche),var(--grafito));
   display:none;align-items:center;justify-content:center;
   padding:28px 20px;overflow-y:auto;
@@ -232,7 +232,7 @@ body{
   display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
   color:var(--texto-tenue);font-size:.85rem;margin-bottom:14px;overflow:hidden;position:relative;
 }
-.foto-picker input[type=file]{position:absolute;inset:0;opacity:0;}
+.foto-picker input[type=file]{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;}
 .foto-picker-mini{height:96px;font-size:.7rem;margin-bottom:0;}
 .fila-fotos-pieza{display:flex;gap:10px;margin-bottom:14px;}
 .fila-fotos-pieza .foto-picker-mini{flex:1;}
@@ -256,7 +256,7 @@ body{
   border:1.5px dashed var(--borde);background:var(--grafito-claro);color:var(--texto-tenue);
   display:flex;align-items:center;justify-content:center;font-size:1.5rem;
 }
-.btn-add-intermedia input[type=file]{position:absolute;inset:0;opacity:0;}
+.btn-add-intermedia input[type=file]{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;}
 
 .btn-primario{
   width:100%;padding:13px;border:none;border-radius:12px;background:var(--vino);color:#fff;
@@ -279,7 +279,7 @@ body{
   width:84px;height:84px;border-radius:14px;background:var(--grafito) center/cover no-repeat;
   flex-shrink:0;border:1px solid var(--borde);position:relative;overflow:hidden;
 }
-.ficha-foto input[type=file]{position:absolute;inset:0;opacity:0;}
+.ficha-foto input[type=file]{position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;}
 .ficha-datos{flex:1;min-width:0;}
 .ficha-nombre-edit{
   background:none;border:none;color:var(--texto);font-size:1.15rem;font-weight:700;width:100%;
@@ -411,7 +411,7 @@ body{
 
 /* ---------- PANTALLA DE CARGA (splash) ---------- */
 .pantalla-carga{
-  position:fixed;inset:0;z-index:999;
+  position:fixed;top:0;right:0;bottom:0;left:0;z-index:999;
   background-image:url('./icons/splash-1284x2778.jpg');
   background-size:cover;background-position:center;background-repeat:no-repeat;
   display:flex;align-items:flex-end;justify-content:center;
@@ -824,7 +824,7 @@ body{
 
     <label class="btn-secundario" style="display:block;text-align:center;position:relative;overflow:hidden;margin-top:10px;">
       ⬆ Restaurar desde archivo .json
-      <input type="file" accept="application/json,.json" id="input-restaurar-fallback" onchange="importarBackupDesdeArchivo(event)" style="position:absolute;inset:0;opacity:0;">
+      <input type="file" accept="application/json,.json" id="input-restaurar-fallback" onchange="importarBackupDesdeArchivo(event)" style="position:absolute;top:0;right:0;bottom:0;left:0;opacity:0;">
     </label>
   </div>
 </div>
