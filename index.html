@@ -501,6 +501,7 @@ body{
     <h1>Restauraciones</h1>
     <button class="btn-icono" onclick="abrirPaletaPanel()" title="Paleta de colores">🎨</button>
     <button class="btn-icono" onclick="abrirBackupPanel()" title="Copia de seguridad">⇅</button>
+    <button class="btn-icono" onclick="salirApp()" title="Salir">🚪</button>
   </div>
   <div class="buscador-wrap">
     <input type="text" id="buscador" class="buscador" placeholder="Buscar proyecto...">
@@ -894,9 +895,15 @@ let faseIntermediasB64 = [];
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 
 /* ---------- visor de foto a pantalla completa (doble toque) ---------- */
-function dobleToqueFoto(ev, url){
-  if(!url) return;
+function extraerUrlDeFondo(el){
+  const bg = el.style.backgroundImage || "";
+  const m = bg.match(/^url\((["']?)(.*)\1\)$/);
+  return m ? m[2] : null;
+}
+function dobleToqueFoto(ev){
   const el = ev.currentTarget;
+  const url = extraerUrlDeFondo(el);
+  if(!url) return;
   const ahora = Date.now();
   const ultimo = parseInt(el.dataset.ultimoToque || "0", 10);
   el.dataset.ultimoToque = ahora;
@@ -909,12 +916,31 @@ function abrirFotoAmpliada(url){
   if(!url) return;
   document.getElementById("lightbox-foto-img").src = url;
   document.getElementById("lightbox-foto").classList.add("activo");
+  history.pushState({lightbox:true}, "");
 }
-function cerrarFotoAmpliada(){
+function cerrarFotoAmpliada(volverAtras){
+  const estabaAbierto = document.getElementById("lightbox-foto").classList.contains("activo");
   document.getElementById("lightbox-foto").classList.remove("activo");
   document.getElementById("lightbox-foto-img").src = "";
+  if(estabaAbierto && volverAtras !== false && history.state && history.state.lightbox){
+    history.back();
+  }
 }
+window.addEventListener("popstate", () => {
+  cerrarFotoAmpliada(false);
+});
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
+function salirApp(){
+  // Distintos envoltorios (AppMint, PWABuilder/TWA, navegador normal) exponen formas distintas de cerrar.
+  // Probamos las más habituales en orden; si ninguna existe, avisamos con instrucciones claras.
+  try{ if(window.WebToApk && typeof window.WebToApk.exitApp === "function"){ window.WebToApk.exitApp(); return; } }catch(e){}
+  try{ if(window.Android && typeof window.Android.exitApp === "function"){ window.Android.exitApp(); return; } }catch(e){}
+  try{ if(window.AppMint && typeof window.AppMint.exitApp === "function"){ window.AppMint.exitApp(); return; } }catch(e){}
+  try{ window.close(); }catch(e){}
+  setTimeout(() => {
+    alert("No se ha podido cerrar la app automáticamente. Usa el botón atrás o el botón de aplicaciones recientes de tu teléfono para salir.");
+  }, 300);
+}
 function fechaParaNombreArchivo(fecha){
   const d = fecha || new Date();
   const pad2 = n => String(n).padStart(2,"0");
@@ -1335,7 +1361,7 @@ function renderDespiece(){
   vacio.style.display = "none";
   cont.innerHTML = p.despiece.map(item => `
     <div class="item-lista">
-      ${(item.fotoAntes || item.fotoDespues) ? `<div class="item-thumb" style="background-image:url('${item.fotoDespues || item.fotoAntes}')" onclick="dobleToqueFoto(event, '${item.fotoDespues || item.fotoAntes}')">${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<span class="item-thumb-badge">+${item.fotosIntermedias.length}</span>` : ""}</div>` : ""}
+      ${(item.fotoAntes || item.fotoDespues) ? `<div class="item-thumb" style="background-image:url('${item.fotoDespues || item.fotoAntes}')" onclick="dobleToqueFoto(event)">${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<span class="item-thumb-badge">+${item.fotosIntermedias.length}</span>` : ""}</div>` : ""}
       <div class="item-cuerpo">
         <div class="item-titulo">${escapeHTML(item.nombre)}</div>
         ${item.notas ? `<div class="item-sub">${escapeHTML(item.notas)}</div>` : ""}
@@ -1466,9 +1492,9 @@ function renderFases(){
     <div class="item-lista">
       ${(item.fotoAntes || item.fotoDespues || (item.fotosIntermedias && item.fotosIntermedias.length)) ? `
       <div class="item-thumb-par">
-        ${item.fotoAntes ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoAntes}')" title="Antes" onclick="dobleToqueFoto(event, '${item.fotoAntes}')"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Antes</div>`}
-        ${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotosIntermedias[0]}')" title="${item.fotosIntermedias.length} foto(s) intermedia(s)" onclick="dobleToqueFoto(event, '${item.fotosIntermedias[0]}')"><span class="item-thumb-badge">+${item.fotosIntermedias.length}</span></div>` : ""}
-        ${item.fotoDespues ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoDespues}')" title="Después" onclick="dobleToqueFoto(event, '${item.fotoDespues}')"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Después</div>`}
+        ${item.fotoAntes ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoAntes}')" title="Antes" onclick="dobleToqueFoto(event)"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Antes</div>`}
+        ${(item.fotosIntermedias && item.fotosIntermedias.length) ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotosIntermedias[0]}')" title="${item.fotosIntermedias.length} foto(s) intermedia(s)" onclick="dobleToqueFoto(event)"><span class="item-thumb-badge">+${item.fotosIntermedias.length}</span></div>` : ""}
+        ${item.fotoDespues ? `<div class="item-thumb item-thumb-mini" style="background-image:url('${item.fotoDespues}')" title="Después" onclick="dobleToqueFoto(event)"></div>` : `<div class="item-thumb item-thumb-mini item-thumb-vacio">Después</div>`}
       </div>` : ""}
       <div class="item-cuerpo">
         <div class="item-titulo">${escapeHTML(item.nombre)}</div>
