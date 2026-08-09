@@ -4,7 +4,7 @@
   "description": "App para llevar el seguimiento de restauraciones de vehículos: proyectos, despiece, fases de trabajo, gastos, diario y fotos de antes, durante y después. Funciona sin conexión y guarda todo en el propio dispositivo.",
   "id": "/index.html",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#1a2e35",
   "theme_color": "#1a2e35",
   "orientation": "portrait",
