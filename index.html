@@ -994,15 +994,9 @@ window.addEventListener("popstate", () => {
 });
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
 function salirApp(){
-  // Distintos envoltorios (AppMint, PWABuilder/TWA, navegador normal) exponen formas distintas de cerrar.
-  // Probamos las más habituales en orden; si ninguna existe, avisamos con instrucciones claras.
-  try{ if(window.WebToApk && typeof window.WebToApk.exitApp === "function"){ window.WebToApk.exitApp(); return; } }catch(e){}
-  try{ if(window.Android && typeof window.Android.exitApp === "function"){ window.Android.exitApp(); return; } }catch(e){}
-  try{ if(window.AppMint && typeof window.AppMint.exitApp === "function"){ window.AppMint.exitApp(); return; } }catch(e){}
-  try{ window.close(); }catch(e){}
-  setTimeout(() => {
-    alert("No se ha podido cerrar la app automáticamente. Usa el botón atrás o el botón de aplicaciones recientes de tu teléfono para salir.");
-  }, 300);
+  // Por seguridad, una web/PWA nunca puede cerrarse sola a sí misma (limitación de Android/Chrome).
+  // No tiene sentido intentarlo: avisamos directamente con la forma correcta de salir.
+  alert("Para salir, desliza hacia atrás o usa el botón de aplicaciones recientes de tu teléfono.");
 }
 function fechaParaNombreArchivo(fecha){
   const d = fecha || new Date();
