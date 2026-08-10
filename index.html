@@ -216,19 +216,30 @@ body{
   font-size:.72rem;color:var(--texto-tenue);margin-top:2px;
 }
 
-.nav-android{
-  display:flex;align-items:center;justify-content:center;gap:38px;
-  background:#f5f5f5;border-radius:14px;padding:20px 16px;margin:18px 0 6px;
+/* ---------- VISTA REDUCIDA (salir): encoge la app para revelar los bordes reales del teléfono ---------- */
+body{margin:0;background:#000;}
+#app-shrink-wrap{width:100%;height:100%;}
+body.vista-reducida #app-shrink-wrap{
+  transform:scale(.86);transform-origin:center top;
+  transition:transform .45s cubic-bezier(.4,0,.2,1);
+  border-radius:28px;overflow:hidden;
+  box-shadow:0 0 0 3000px #000;
 }
-.nav-android .btn-nav{display:flex;flex-direction:column;align-items:center;gap:6px;}
-.nav-android .icono-nav{
-  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
-  opacity:.55;filter:grayscale(1);
+#indicador-salir{position:fixed;inset:0;z-index:500;display:none;pointer-events:none;}
+body.vista-reducida #indicador-salir{display:block;}
+.indicador-flecha{
+  position:absolute;left:50%;transform:translateX(-50%);width:86%;
+  color:#fff;font-size:.76rem;font-weight:600;text-align:center;line-height:1.4;
+  text-shadow:0 1px 4px rgba(0,0,0,.7);
 }
-.nav-android .btn-nav.resaltado .icono-nav{opacity:1;filter:none;}
-.nav-android .icono-nav svg{width:100%;height:100%;}
-.nav-android .btn-nav span{font-size:.68rem;color:#333;font-weight:600;text-align:center;}
-.nav-android .btn-nav:not(.resaltado) span{color:#999;font-weight:500;}
+.indicador-arriba{top:8px;}
+.indicador-abajo{bottom:8px;}
+.indicador-cerrar{
+  position:absolute;top:52px;left:50%;transform:translateX(-50%);
+  pointer-events:auto;background:rgba(255,255,255,.16);color:#fff;
+  border:1px solid rgba(255,255,255,.45);border-radius:20px;
+  padding:8px 18px;font-size:.78rem;font-weight:600;
+}
 
 .campo{margin-bottom:14px;}
 .campo label{display:block;font-size:.78rem;color:var(--texto-tenue);margin-bottom:5px;font-weight:600;}
@@ -860,42 +871,6 @@ body{
   </div>
 </div>
 
-<!-- ================= MODAL: PALETA DE COLORES ================= -->
-<div class="overlay" id="overlay-salir">
-  <div class="hoja">
-    <div class="hoja-cab">
-      <h2>Cómo salir de la app</h2>
-      <button onclick="cerrarOverlay('overlay-salir')">✕</button>
-    </div>
-    <p style="font-size:.9rem;line-height:1.5;color:var(--texto);margin-bottom:4px;">
-      Por seguridad, una app instalada así no puede cerrarse sola. Usa uno de estos botones de tu teléfono:
-    </p>
-    <div class="nav-android">
-      <div class="btn-nav resaltado">
-        <div class="icono-nav">
-          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2"/></svg>
-        </div>
-        <span>Recientes</span>
-      </div>
-      <div class="btn-nav">
-        <div class="icono-nav">
-          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg>
-        </div>
-        <span>Inicio</span>
-      </div>
-      <div class="btn-nav resaltado">
-        <div class="icono-nav">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3 L6 12 L17 21 Z"/></svg>
-        </div>
-        <span>Atrás</span>
-      </div>
-    </div>
-    <p style="font-size:.78rem;line-height:1.5;color:var(--texto-tenue);margin-top:12px;text-align:center;">
-      Pulsa "Atrás" varias veces o abre "Recientes" y desliza esta app fuera de la lista.
-    </p>
-  </div>
-</div>
-
 <div class="overlay" id="overlay-paleta">
   <div class="hoja">
     <div class="hoja-cab">
@@ -1043,10 +1018,29 @@ window.addEventListener("popstate", () => {
 });
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
 function salirApp(){
-  // Por seguridad, una web/PWA nunca puede cerrarse sola a sí misma (limitación de Android/Chrome).
-  // No tiene sentido intentarlo: mostramos directamente el modal con la forma correcta de salir.
-  abrirOverlay("overlay-salir");
+  // No podemos pulsar los botones reales del teléfono por ti (Android no lo permite desde una web).
+  // En vez de dibujar botones falsos, encogemos la propia pantalla de la app: así quedan a la vista
+  // los bordes reales del teléfono, donde ya están la barra de notificaciones (arriba) y la barra de
+  // navegación (abajo) — son del sistema, no las dibuja la app.
+  document.body.classList.add("vista-reducida");
 }
+function ocultarVistaReducida(){
+  document.body.classList.remove("vista-reducida");
+}
+(function inicializarVistaReducida(){
+  const wrap = document.createElement("div");
+  wrap.id = "app-shrink-wrap";
+  while (document.body.firstChild) wrap.appendChild(document.body.firstChild);
+  document.body.appendChild(wrap);
+
+  const indicador = document.createElement("div");
+  indicador.id = "indicador-salir";
+  indicador.innerHTML =
+    '<div class="indicador-flecha indicador-arriba">▲ Ahí arriba está la barra de notificaciones de tu teléfono</div>' +
+    '<button class="indicador-cerrar" onclick="ocultarVistaReducida()">Volver a tamaño normal</button>' +
+    '<div class="indicador-flecha indicador-abajo">▼ Ahí abajo está la barra de navegación — pulsa Atrás o abre Recientes para salir</div>';
+  document.body.appendChild(indicador);
+})();
 function fechaParaNombreArchivo(fecha){
   const d = fecha || new Date();
   const pad2 = n => String(n).padStart(2,"0");
