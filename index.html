@@ -216,29 +216,19 @@ body{
   font-size:.72rem;color:var(--texto-tenue);margin-top:2px;
 }
 
-/* ---------- VISTA REDUCIDA (salir): encoge la app para revelar los bordes reales del teléfono ---------- */
-body{margin:0;background:#000;}
-#app-shrink-wrap{width:100%;height:100%;}
-body.vista-reducida #app-shrink-wrap{
-  transform:scale(.86);transform-origin:center top;
-  transition:transform .45s cubic-bezier(.4,0,.2,1);
-  border-radius:28px;overflow:hidden;
-  box-shadow:0 0 0 3000px #000;
+/* ---------- AVISO SALIR: nota simple, sin trucos visuales que no funcionan ---------- */
+.aviso-salir{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  width:88%;max-width:380px;z-index:500;
+  background:var(--azul-noche);border:1px solid var(--borde);border-radius:16px;
+  padding:16px 18px;box-shadow:0 8px 30px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .25s ease,transform .25s ease;
 }
-#indicador-salir{position:fixed;inset:0;z-index:500;display:none;pointer-events:none;}
-body.vista-reducida #indicador-salir{display:block;}
-.indicador-flecha{
-  position:absolute;left:50%;transform:translateX(-50%);width:86%;
-  color:#fff;font-size:.76rem;font-weight:600;text-align:center;line-height:1.4;
-  text-shadow:0 1px 4px rgba(0,0,0,.7);
-}
-.indicador-arriba{top:8px;}
-.indicador-abajo{bottom:8px;}
-.indicador-cerrar{
-  position:absolute;top:52px;left:50%;transform:translateX(-50%);
-  pointer-events:auto;background:rgba(255,255,255,.16);color:#fff;
-  border:1px solid rgba(255,255,255,.45);border-radius:20px;
-  padding:8px 18px;font-size:.78rem;font-weight:600;
+.aviso-salir.activo{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+.aviso-salir p{font-size:.85rem;line-height:1.5;color:var(--texto);margin-bottom:10px;}
+.aviso-salir button{
+  display:block;margin-left:auto;background:none;border:none;
+  color:var(--vino);font-weight:700;font-size:.85rem;padding:4px 6px;
 }
 
 .campo{margin-bottom:14px;}
@@ -1018,28 +1008,25 @@ window.addEventListener("popstate", () => {
 });
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
 function salirApp(){
-  // No podemos pulsar los botones reales del teléfono por ti (Android no lo permite desde una web).
-  // En vez de dibujar botones falsos, encogemos la propia pantalla de la app: así quedan a la vista
-  // los bordes reales del teléfono, donde ya están la barra de notificaciones (arriba) y la barra de
-  // navegación (abajo) — son del sistema, no las dibuja la app.
-  document.body.classList.add("vista-reducida");
+  // Una web no puede mostrar ni activar la barra de estado o los botones de navegación reales del
+  // teléfono: eso lo dibuja el sistema operativo, por fuera de lo que la página controla. Si ahora
+  // mismo no los ves, es porque Chrome los ha ocultado (modo inmersivo al hacer scroll); solo un
+  // gesto tuyo desde el borde de la pantalla los vuelve a mostrar. Aquí solo lo explicamos con texto.
+  document.getElementById("aviso-salir").classList.add("activo");
 }
-function ocultarVistaReducida(){
-  document.body.classList.remove("vista-reducida");
+function cerrarAvisoSalir(){
+  document.getElementById("aviso-salir").classList.remove("activo");
 }
-(function inicializarVistaReducida(){
-  const wrap = document.createElement("div");
-  wrap.id = "app-shrink-wrap";
-  while (document.body.firstChild) wrap.appendChild(document.body.firstChild);
-  document.body.appendChild(wrap);
-
-  const indicador = document.createElement("div");
-  indicador.id = "indicador-salir";
-  indicador.innerHTML =
-    '<div class="indicador-flecha indicador-arriba">▲ Ahí arriba está la barra de notificaciones de tu teléfono</div>' +
-    '<button class="indicador-cerrar" onclick="ocultarVistaReducida()">Volver a tamaño normal</button>' +
-    '<div class="indicador-flecha indicador-abajo">▼ Ahí abajo está la barra de navegación — pulsa Atrás o abre Recientes para salir</div>';
-  document.body.appendChild(indicador);
+(function inicializarAvisoSalir(){
+  const aviso = document.createElement("div");
+  aviso.id = "aviso-salir";
+  aviso.className = "aviso-salir";
+  aviso.innerHTML =
+    '<p>No puedo activar los botones de tu teléfono desde la web (Android no lo permite). ' +
+    'Para salir: pulsa el botón <b>Atrás</b> varias veces, o abre <b>Recientes</b> y desliza esta app fuera de la lista.<br><br>' +
+    'Si no ves esos botones ni la barra de arriba, desliza el dedo desde el borde superior o inferior de la pantalla para que vuelvan a aparecer.</p>' +
+    '<button onclick="cerrarAvisoSalir()">Entendido</button>';
+  document.body.appendChild(aviso);
 })();
 function fechaParaNombreArchivo(fecha){
   const d = fecha || new Date();
