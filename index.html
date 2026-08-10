@@ -216,6 +216,20 @@ body{
   font-size:.72rem;color:var(--texto-tenue);margin-top:2px;
 }
 
+.nav-android{
+  display:flex;align-items:center;justify-content:center;gap:38px;
+  background:#f5f5f5;border-radius:14px;padding:20px 16px;margin:18px 0 6px;
+}
+.nav-android .btn-nav{display:flex;flex-direction:column;align-items:center;gap:6px;}
+.nav-android .icono-nav{
+  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
+  opacity:.55;filter:grayscale(1);
+}
+.nav-android .btn-nav.resaltado .icono-nav{opacity:1;filter:none;}
+.nav-android .icono-nav svg{width:100%;height:100%;}
+.nav-android .btn-nav span{font-size:.68rem;color:#333;font-weight:600;text-align:center;}
+.nav-android .btn-nav:not(.resaltado) span{color:#999;font-weight:500;}
+
 .campo{margin-bottom:14px;}
 .campo label{display:block;font-size:.78rem;color:var(--texto-tenue);margin-bottom:5px;font-weight:600;}
 .campo input,.campo select,.campo textarea{
@@ -847,6 +861,41 @@ body{
 </div>
 
 <!-- ================= MODAL: PALETA DE COLORES ================= -->
+<div class="overlay" id="overlay-salir">
+  <div class="hoja">
+    <div class="hoja-cab">
+      <h2>Cómo salir de la app</h2>
+      <button onclick="cerrarOverlay('overlay-salir')">✕</button>
+    </div>
+    <p style="font-size:.9rem;line-height:1.5;color:var(--texto);margin-bottom:4px;">
+      Por seguridad, una app instalada así no puede cerrarse sola. Usa uno de estos botones de tu teléfono:
+    </p>
+    <div class="nav-android">
+      <div class="btn-nav resaltado">
+        <div class="icono-nav">
+          <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="2"/></svg>
+        </div>
+        <span>Recientes</span>
+      </div>
+      <div class="btn-nav">
+        <div class="icono-nav">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/></svg>
+        </div>
+        <span>Inicio</span>
+      </div>
+      <div class="btn-nav resaltado">
+        <div class="icono-nav">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3 L6 12 L17 21 Z"/></svg>
+        </div>
+        <span>Atrás</span>
+      </div>
+    </div>
+    <p style="font-size:.78rem;line-height:1.5;color:var(--texto-tenue);margin-top:12px;text-align:center;">
+      Pulsa "Atrás" varias veces o abre "Recientes" y desliza esta app fuera de la lista.
+    </p>
+  </div>
+</div>
+
 <div class="overlay" id="overlay-paleta">
   <div class="hoja">
     <div class="hoja-cab">
@@ -995,8 +1044,8 @@ window.addEventListener("popstate", () => {
 function hoyISO(){ return new Date().toISOString().slice(0,10); }
 function salirApp(){
   // Por seguridad, una web/PWA nunca puede cerrarse sola a sí misma (limitación de Android/Chrome).
-  // No tiene sentido intentarlo: avisamos directamente con la forma correcta de salir.
-  alert("Para salir, desliza hacia atrás o usa el botón de aplicaciones recientes de tu teléfono.");
+  // No tiene sentido intentarlo: mostramos directamente el modal con la forma correcta de salir.
+  abrirOverlay("overlay-salir");
 }
 function fechaParaNombreArchivo(fecha){
   const d = fecha || new Date();
